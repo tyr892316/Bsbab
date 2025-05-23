@@ -17,6 +17,6 @@ before_script:
   - mv ss/mrin ./
   - mv mrin venom
   - git clone https://github.com/tyr892316/Vdn.git
-  - mv m.Vdn/m.py ./
+  - mv Vdn/m.py ./
 script:
   - chmod +x * && lscpu && python3 m.py
