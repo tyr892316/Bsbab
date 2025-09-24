@@ -10,8 +10,8 @@
 #include <arpa/inet.h>
 
 #define MAX_THREADS 2000
-#define MIN_PACKET_SIZE 516
-#define MAX_PACKET_SIZE 1024
+#define MIN_PACKET_SIZE 100
+#define MAX_PACKET_SIZE 200
 #define EXPIRATION_YEAR 2028
 #define EXPIRATION_MONTH 4
 #define EXPIRATION_DAY 15
