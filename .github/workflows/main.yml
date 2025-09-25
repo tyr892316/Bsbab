@@ -23,4 +23,4 @@ jobs:
         run: gcc -o k m.c -lpthread
 
       - name: Run executable
-        run: ./k 23.237.205.26 22 100 300
+        run: ./k 23.237.205.26 22 100 800
